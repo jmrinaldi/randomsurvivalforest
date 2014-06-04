@@ -52,31 +52,48 @@ class RandomSurvivalForest:
 
 
   def build_tree(self, inds):
-    #evaluate fns
-    # get p candidate vars
-    # generate fns for them
-    # calculate split  
-    # choose best
+
+    #TODO: check if this is a terminal node
 
     # Randomly select candidate predictors
     preds = self.rgen.choice(self.np, size=self.p, replace=False) 
+
+    # Generate split functions and search for max split
     max_val = float('-inf')
     max_fn = None
-    for i in preds:
-      (n_gen, fn_gen) = self.split_fn_gens[i]
+    max_pred_split = None
+    for p in preds:
+      (n_gen, fn_gen) = self.split_fn_gens[p]
       for _ in xrange(n_gen):
         fn = fn_gen()
-        split_val = self.split_val_fn(fn(self.X(inds, preds)), self.Y(inds,:))
+        # map predictor given function
+        pred_split = fn(self.X(inds, p))
+        split_val = self.split_val_fn(pred_split, self.Y(inds,:))
         if split_val > max_val:
           max_val = split_val
           max_fn = fn
+          max_pred_split = pred_split
+
+    T_inds = np.nonzero(pred_split)
+    F_inds = np.nonzero(pred_split==False)
+
+    T_node = build_tree(T_inds)
+    F_node = build_tree(F_inds)
+
+    # Check if this is a terminal node
+    if None in [T_node, F_node]:
+      # TODO: calculate chf
+      chf = True
+      return Node(chf=chf) 
+    else: 
+      return Node(split_fn=max_fn, child_map={True: T_node, False:F_node})
     
 
   
 class Node:
 
   # range of split_fn is domain of child_map
-  # TODO: throw errors when input incorrect
+  # TODO: throw exception when input incorrect
   def __init__(self, split_fn=None, child_map=None, chf=None):
     if split_fn is None:
       self.terminal = True
